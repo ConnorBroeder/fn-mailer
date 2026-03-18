@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FunderNation Mailer</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#00C27C;--g-d:#009962;--g-bg:#F0FBF6;--g-ring:rgba(0,194,124,.18);
+  --ink:#0C1117;--muted:#6B7785;--faint:#9AA3AE;
+  --line:#E8ECF0;--surface:#F7F9FB;--white:#fff;
+  --red:#E8445A;--amber:#E8900A;
+  --r:10px;--r-lg:14px;--r-pill:99px;
+  --ease:.18s cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;font-family:'Geist',system-ui,sans-serif;font-size:13px;color:var(--ink);background:var(--white);-webkit-font-smoothing:antialiased;overflow:hidden}
+/* ── SHELL ── */
+.shell{display:flex;flex-direction:column;height:100vh}
+/* ── HEADER ── */
+header{
+  padding:14px 16px 0;
+  background:var(--white);
+  border-bottom:1px solid var(--line);
+  flex-shrink:0;
+}
+.brand{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.brand-mark{
+  width:28px;height:28px;background:var(--g);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.brand-mark svg{width:14px;height:14px}
+.brand-name{font-size:14px;font-weight:600;letter-spacing:-.3px;color:var(--ink)}
+.brand-name em{color:var(--g);font-style:normal}
+.brand-badge{margin-left:auto;font-size:10px;font-weight:600;padding:2px 7px;background:var(--g-bg);color:var(--g-d);border-radius:var(--r-pill)}
+/* tabs */
+.tabs{display:flex;gap:0}
+.tab{
+  flex:1;padding:9px 4px 8px;border:none;background:none;cursor:pointer;
+  font:500 12px/1 'Geist',sans-serif;color:var(--faint);
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:var(--ease);white-space:nowrap;
+}
+.tab.on{color:var(--g);border-bottom-color:var(--g)}
+.tab:hover:not(.on){color:var(--muted)}
+.tab-count{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--g);color:#fff;border-radius:50%;font-size:9px;font-weight:700;margin-left:4px;vertical-align:middle}
+/* ── BODY ── */
+.body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.panel{display:none;flex:1;overflow-y:auto;padding:14px;flex-direction:column;gap:12px}
+.panel.on{display:flex}
+/* ── COMPONENTS ── */
+/* card */
+.c{background:var(--white);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.c-head{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.c-label{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.c-body{padding:14px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 14px;border-radius:var(--r);font:500 12.5px/1 'Geist',sans-serif;cursor:pointer;border:1px solid transparent;transition:var(--ease);white-space:nowrap}
+.btn-p{background:var(--g);color:#fff;box-shadow:0 1px 6px rgba(0,194,124,.28)}
+.btn-p:hover{background:var(--g-d);transform:translateY(-1px);box-shadow:0 3px 12px rgba(0,194,124,.32)}
+.btn-p:active{transform:none}
+.btn-s{background:var(--white);color:var(--ink);border-color:var(--line)}
+.btn-s:hover{background:var(--surface);border-color:#D0D5DD}
+.btn-g{background:none;color:var(--muted);border:none;padding:6px 9px;font-size:11.5px}
+.btn-g:hover{color:var(--ink);background:var(--surface);border-radius:var(--r)}
+.btn-sm{padding:5px 11px;font-size:11.5px;border-radius:8px}
+.btn-full{width:100%}
+.btn-xl{padding:12px 20px;font-size:14px;border-radius:var(--r-lg)}
+.btn:disabled{opacity:.36;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+/* inputs */
+.inp{width:100%;padding:8px 11px;border:1.5px solid var(--line);border-radius:var(--r);font:400 13px/1.4 'Geist',sans-serif;color:var(--ink);background:var(--white);transition:var(--ease);outline:none}
+.inp:focus{border-color:var(--g);box-shadow:0 0 0 3px var(--g-ring)}
+.inp::placeholder{color:var(--faint)}
+.inp-label{font-size:11px;font-weight:500;color:#374151;margin-bottom:4px;display:block}
+/* ── TAG PILLS ── */
+.tag-search-wrap{position:relative;margin-bottom:10px}
+.tag-search-wrap .ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;color:var(--faint)}
+.tag-search-wrap .inp{padding-left:28px}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.tag{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:4px 9px;background:var(--g-bg);color:var(--g-d);
+  border:1.5px solid rgba(0,194,124,.22);border-radius:var(--r-pill);
+  font:600 11px/1 'Geist',monospace;cursor:pointer;transition:var(--ease);
+}
+.tag:hover{background:var(--g);color:#fff;border-color:var(--g);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,194,124,.22)}
+.tag svg{width:9px;height:9px;opacity:.6}
+/* ── DROP ZONE ── */
+.drop{
+  border:2px dashed var(--line);border-radius:var(--r-lg);
+  padding:24px 16px;text-align:center;cursor:pointer;
+  transition:var(--ease);background:var(--surface);
+}
+.drop:hover,.drop.over{border-color:var(--g);background:var(--g-bg)}
+.drop-ico{font-size:30px;display:block;margin-bottom:7px}
+.drop-title{font-weight:600;font-size:13px;margin-bottom:3px;color:var(--ink)}
+.drop-sub{font-size:11.5px;color:var(--muted)}
+/* ── TABLE ── */
+.tbl-wrap{overflow:auto;max-height:200px;border-radius:var(--r);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:var(--surface);padding:6px 9px;text-align:left;font:600 10.5px/1 'Geist',sans-serif;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 9px;border-bottom:1px solid var(--line);color:var(--ink);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border:none}
+tr:hover td{background:var(--g-bg)}
+/* ── STATS ── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{background:var(--surface);border-radius:var(--r);padding:9px 10px;text-align:center}
+.stat-n{font-size:19px;font-weight:600;line-height:1.2}
+.stat-n.g{color:var(--g)}.stat-n.r{color:var(--red)}
+.stat-l{font-size:10px;color:var(--muted);margin-top:1px}
+/* ── MAP ── */
+.map-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.map-tag{font:600 10.5px/1 monospace;background:var(--g-bg);color:var(--g-d);padding:3px 7px;border-radius:var(--r-pill);white-space:nowrap;flex-shrink:0}
+.map-arrow{color:var(--faint);font-size:11px;flex-shrink:0}
+/* ── PREVIEW CARD ── */
+.prev-box{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--line);padding:12px;font-size:12.5px;line-height:1.75;color:var(--ink);white-space:pre-wrap;min-height:80px;max-height:200px;overflow-y:auto}
+.prev-nav{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.prev-ctr{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:var(--muted)}
+.prev-meta{font-size:11.5px;color:var(--muted);margin-bottom:3px}
+.prev-subj{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--ink)}
+/* ── PROGRESS ── */
+.prog-track{height:5px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;background:var(--g);border-radius:99px;transition:width .35s ease}
+.log{background:#0D1117;border-radius:var(--r);padding:10px 11px;font:11px/1.9 'Courier New',monospace;max-height:140px;overflow-y:auto}
+.lok{color:#4ADE80}.ler{color:#F87171}.lin{color:#4B5563}
+/* ── SEND STATUS ── */
+.send-state{display:none;flex-direction:column;gap:8px;margin-top:8px}
+.send-state.on{display:flex}
+/* ── TOGGLE ── */
+.tgl{position:relative;width:34px;height:18px;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.ttrack{position:absolute;inset:0;background:#D0D5DD;border-radius:99px;cursor:pointer;transition:var(--ease)}
+.tgl input:checked+.ttrack{background:var(--g)}
+.ttrack::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:var(--ease)}
+.tgl input:checked+.ttrack::after{transform:translateX(16px)}
+.tgl-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0}
+.tgl-info .t{font-size:12.5px;font-weight:500;color:var(--ink)}
+.tgl-info .s{font-size:11px;color:var(--muted)}
+/* ── CAMPAIGN ITEMS ── */
+.camp-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:var(--r);cursor:pointer;transition:var(--ease)}
+.camp-item:hover{background:var(--g-bg)}
+.camp-ico{width:32px;height:32px;background:var(--g-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.camp-info{flex:1;min-width:0}
+.camp-name{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.camp-sub{font-size:11px;color:var(--muted)}
+.bdg{padding:2px 7px;border-radius:var(--r-pill);font-size:10px;font-weight:600}
+.bdg-d{background:var(--surface);color:var(--muted)}
+.bdg-s{background:var(--g-bg);color:var(--g-d)}
+/* ── AUTH BANNER ── */
+.auth-banner{background:linear-gradient(135deg,#0D1117 0%,#1A2332 100%);border-radius:var(--r-lg);padding:16px;color:#fff}
+.auth-banner h3{font-size:13.5px;font-weight:600;margin-bottom:4px}
+.auth-banner p{font-size:11.5px;color:#8D97A5;line-height:1.6;margin-bottom:12px}
+.auth-step{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+.auth-num{width:18px;height:18px;background:var(--g);border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.auth-text{font-size:11.5px;color:#C8CDD4;line-height:1.55}
+.auth-text a{color:var(--g);text-decoration:none}
+.auth-text a:hover{text-decoration:underline}
+/* ── EMPTY ── */
+.empty{text-align:center;padding:28px 12px;color:var(--muted)}
+.empty-ico{font-size:34px;margin-bottom:8px;display:block}
+.empty p{font-size:12px;line-height:1.6}
+/* ── UTIL ── */
+.hidden{display:none!important}
+.row{display:flex;align-items:center;gap:7px}
+.col{display:flex;flex-direction:column;gap:8px}
+.sub{font-size:11.5px;color:var(--muted);line-height:1.6}
+.sep{height:1px;background:var(--line);margin:2px 0}
+.mt{margin-top:6px}
+.w-full{width:100%}
+/* ── TOAST ── */
+.toasts{position:fixed;bottom:14px;left:12px;right:12px;z-index:999;pointer-events:none}
+.toast{background:#0D1117;color:#fff;padding:9px 13px;border-radius:var(--r-lg);font-size:12px;display:flex;align-items:center;gap:7px;margin-top:5px;pointer-events:auto;animation:tin .2s cubic-bezier(.34,1.5,.64,1)}
+@keyframes tin{from{opacity:0;transform:translateY(8px) scale(.95)}to{opacity:1;transform:none}}
+.toast.ok{border-left:3px solid var(--g)}
+.toast.err{border-left:3px solid var(--red)}
+/* ── SEND MODE BUTTON ── */
+.mode-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--white);cursor:pointer;transition:var(--ease);width:100%;text-align:left;font-family:'Geist',sans-serif}
+.mode-btn:hover{border-color:var(--g);background:var(--g-bg)}
+.mode-btn.selected{border-color:var(--g);background:var(--g-bg)}
+.mode-btn .ico-wrap{width:32px;height:32px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:var(--ease)}
+.mode-btn.selected .ico-wrap{background:var(--g);color:#fff}
+.mode-btn .mode-info .t{font-size:12.5px;font-weight:600;color:var(--ink)}
+.mode-btn .mode-info .s{font-size:11px;color:var(--muted)}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:#C0C8D0}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 14 14" fill="none">
+        <path d="M7 1L12 3.8V7C12 9.8 9.8 12 7 13C4.2 12 2 9.8 2 7V3.8L7 1Z" fill="white" opacity=".3"/>
+        <path d="M4.5 7L6.5 9L9.5 5.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="brand-name">Funder<em>Nation</em> Mailer</span>
+    <span class="brand-badge">Beta</span>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="t0" onclick="sw(0)">Tags</button>
+    <button class="tab" id="t1" onclick="sw(1)">Empfänger <span class="tab-count hidden" id="rcBadge">0</span></button>
+    <button class="tab" id="t2" onclick="sw(2)">Vorschau</button>
+    <button class="tab" id="t3" onclick="sw(3)">Senden</button>
+    <button class="tab" id="t4" onclick="sw(4)">Kampagnen</button>
+  </div>
+</header>
+
+<!-- ════════════════════════════════
+     PANEL 0 — TAGS
+════════════════════════════════ -->
+<div class="panel on" id="p0">
+
+  <div class="c">
+    <div class="c-head">
+      <span class="c-label">Merge Tags einfügen</span>
+      <button class="btn btn-g btn-sm" onclick="newTag()">+ Eigener</button>
+    </div>
+    <div class="c-body col">
+      <p class="sub">Cursor in Outlook-E-Mail positionieren → Tag klicken → wird eingefügt</p>
+      <div class="tag-search-wrap">
+        <span class="ico">⌕</span>
+        <input class="inp" id="tagQ" placeholder="Tag suchen…" oninput="filterTags(this.value)"/>
+      </div>
+      <div class="tags-wrap" id="tagGrid"></div>
+    </div>
+  </div>
+
+  <!-- Quick compose hint -->
+  <div class="c" style="background:var(--surface);border:none">
+    <div class="c-body">
+      <p class="sub" style="font-size:11px;line-height:1.7">
+        <strong style="color:var(--ink)">Tipp:</strong> Schreibe deine E-Mail direkt in Outlook.
+        Klicke einen Tag oben — er landet genau an der Cursor-Position.
+        Wechsle dann zu <strong style="color:var(--ink)">Empfänger</strong> und lade deine Liste.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════
+     PANEL 1 — EMPFÄNGER
+════════════════════════════════ -->
+<div class="panel" id="p1">
+
+  <!-- Upload -->
+  <div class="c">
+    <div class="c-head">
+      <span class="c-label">Liste importieren</span>
+    </div>
+    <div class="c-body col">
+      <div class="drop" id="dropZ"
+        onclick="document.getElementById('fi').click()"
+        ondragover="dragOver(event)" ondrop="doDrop(event)" ondragleave="dragLeave()">
+        <span class="drop-ico">📊</span>
+        <div class="drop-title">Excel oder CSV ablegen</div>
+        <div class="drop-sub">.xlsx · .xls · .csv</div>
+      </div>
+      <input type="file" id="fi" accept=".xlsx,.xls,.csv" class="hidden" onchange="loadFile(this)"/>
+      <div style="display:flex;align-items:center;gap:8px;color:var(--faint);font-size:11px">
+        <div style="flex:1;height:1px;background:var(--line)"></div>oder<div style="flex:1;height:1px;background:var(--line)"></div>
+      </div>
+      <button class="btn btn-s btn-sm btn-full" onclick="showManual()">✏️ Manuell eingeben</button>
+    </div>
+  </div>
+
+  <!-- Manual -->
+  <div class="c hidden" id="manCard">
+    <div class="c-head">
+      <span class="c-label">Manuell</span>
+      <button class="btn btn-g btn-sm" onclick="addManRow()">+ Zeile</button>
+    </div>
+    <div class="c-body col">
+      <div id="manRows"></div>
+      <button class="btn btn-p btn-sm" onclick="commitMan()">Übernehmen</button>
+    </div>
+  </div>
+
+  <!-- Stats + table -->
+  <div class="c hidden" id="tblCard">
+    <div class="c-head">
+      <span class="c-label">Empfänger</span>
+      <button class="btn btn-g btn-sm" onclick="clearList()">✕ Leeren</button>
+    </div>
+    <div style="padding:10px 12px;border-bottom:1px solid var(--line)">
+      <div class="stats" id="statsRow"></div>
+    </div>
+    <div class="tbl-wrap">
+      <table><thead id="th"></thead><tbody id="tb"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Mapping -->
+  <div class="c hidden" id="mapCard">
+    <div class="c-head"><span class="c-label">Spalten → Tags zuordnen</span></div>
+    <div class="c-body col" id="mapBody"></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════
+     PANEL 2 — VORSCHAU
+════════════════════════════════ -->
+<div class="panel" id="p2">
+  <div class="c">
+    <div class="c-head">
+      <span class="c-label">Vorschau pro Empfänger</span>
+    </div>
+    <div class="c-body col" id="prevContent">
+      <div class="empty">
+        <span class="empty-ico">👀</span>
+        <p>Lade zuerst eine Empfängerliste um die Vorschau zu sehen.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     PANEL 3 — SENDEN
+════════════════════════════════ -->
+<div class="panel" id="p3">
+
+  <!-- Checklist -->
+  <div class="c">
+    <div class="c-head"><span class="c-label">Checkliste</span></div>
+    <div class="c-body col" id="pfList"></div>
+  </div>
+
+  <!-- Mode selection -->
+  <div class="c">
+    <div class="c-head"><span class="c-label">Sende-Modus</span></div>
+    <div class="c-body col">
+      <button class="mode-btn selected" id="m0" onclick="selMode(0)">
+        <div class="ico-wrap">📤</div>
+        <div class="mode-info">
+          <div class="t">Direkt senden</div>
+          <div class="s">E-Mails sofort in Gesendet</div>
+        </div>
+      </button>
+      <button class="mode-btn" id="m1" onclick="selMode(1)">
+        <div class="ico-wrap">📝</div>
+        <div class="mode-info">
+          <div class="t">Als Entwurf</div>
+          <div class="s">Erst prüfen, dann senden</div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Delay -->
+  <div class="c">
+    <div class="c-head"><span class="c-label">Timing</span></div>
+    <div class="c-body col">
+      <div class="tgl-row">
+        <div class="tgl-info">
+          <div class="t">Pause zwischen E-Mails</div>
+          <div class="s">Verhindert Spam-Filter</div>
+        </div>
+        <label class="tgl"><input type="checkbox" id="delOn" checked/><span class="ttrack"></span></label>
+      </div>
+      <div class="row" id="delWrap">
+        <input type="number" id="dMin" value="4" min="1" max="60" class="inp" style="width:56px;text-align:center;padding:6px 8px"/>
+        <span class="sub">–</span>
+        <input type="number" id="dMax" value="9" min="1" max="120" class="inp" style="width:56px;text-align:center;padding:6px 8px"/>
+        <span class="sub">Sekunden</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth config -->
+  <div class="auth-banner">
+    <h3>🔑 Microsoft Graph API</h3>
+    <p>Für den Versand ist eine einmalige Azure App-ID nötig (kostenlos). Einrichtung: 5 Min.</p>
+    <div class="auth-step"><span class="auth-num">1</span><span class="auth-text"><a href="https://portal.azure.com" target="_blank">portal.azure.com</a> → App-Registrierungen → Neue Registrierung</span></div>
+    <div class="auth-step"><span class="auth-num">2</span><span class="auth-text">Redirect URI: <code style="color:#86EFB8;font-size:10.5px">https://DEIN-GITHUB.github.io/fn-mailer/taskpane.html</code></span></div>
+    <div class="auth-step"><span class="auth-num">3</span><span class="auth-text">API-Berechtigungen → <strong style="color:#86EFB8">Mail.Send</strong> (delegiert) hinzufügen</span></div>
+    <div class="auth-step"><span class="auth-num">4</span><span class="auth-text">Client-ID hier einfügen:</span></div>
+    <input class="inp" id="clientId" style="margin-top:6px;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.12);color:#fff;font-size:12px" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="saveClientId()"/>
+  </div>
+
+  <!-- Send button -->
+  <button class="btn btn-p btn-full btn-xl" id="sendBtn" onclick="startSend()" disabled>
+    🚀 Jetzt senden
+  </button>
+  <p class="sub" style="text-align:center" id="sendEst">—</p>
+
+  <!-- Progress -->
+  <div class="send-state" id="sendState">
+    <div class="c">
+      <div class="c-head">
+        <span class="c-label">📤 Versand läuft</span>
+        <span id="sendCtr" class="sub">0 / 0</span>
+      </div>
+      <div class="c-body col">
+        <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0"></div></div>
+        <div class="log" id="sendLog"><span class="lin">Bereit…</span></div>
+        <button class="btn btn-s btn-sm" onclick="abortSend()">⛔ Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════
+     PANEL 4 — KAMPAGNEN
+════════════════════════════════ -->
+<div class="panel" id="p4">
+  <div class="row">
+    <button class="btn btn-p btn-sm" style="flex:1" onclick="saveCamp()">💾 Aktuelle speichern</button>
+    <button class="btn btn-s btn-sm" style="flex:1" onclick="exportCamp()">⬇ Exportieren</button>
+  </div>
+  <div id="campList"></div>
+</div>
+
+</div><!-- /shell -->
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ════════ STATE ════════ */
+const S={
+  tags:[
+    {k:'VORNAME',      l:'Vorname'},
+    {k:'NACHNAME',     l:'Nachname'},
+    {k:'ANSPRACHE',    l:'Ansprache'},
+    {k:'EMAIL',        l:'E-Mail'},
+    {k:'UNTERNEHMEN',  l:'Unternehmen'},
+    {k:'INVESTMENTINTERESSE',l:'Investment'},
+    {k:'BETRAG',       l:'Betrag (€)'},
+    {k:'BRANCHE',      l:'Branche'},
+    {k:'DATUM',        l:'Datum'},
+    {k:'ANGEBOTSNR',   l:'Angebots-Nr.'},
+  ],
+  rc:[],cols:[],colMap:{},
+  camps: JSON.parse(localStorage.getItem('fn_camps')||'[]'),
+  mode:0,aborted:false,prevIdx:0,
+  clientId: localStorage.getItem('fn_clientId')||'',
+};
+
+/* ════════ OFFICE INIT ════════ */
+Office.onReady(()=>{
+  renderTags();renderCamps();refreshPref();
+  if(S.clientId) document.getElementById('clientId').value=S.clientId;
+});
+
+/* ════════ TABS ════════ */
+function sw(n){
+  [0,1,2,3,4].forEach(i=>{
+    document.getElementById('t'+i).classList.toggle('on',i===n);
+    document.getElementById('p'+i).classList.toggle('on',i===n);
+  });
+  if(n===2) buildPreview();
+  if(n===3) refreshPref();
+}
+
+/* ════════ TAGS ════════ */
+function renderTags(q=''){
+  const g=document.getElementById('tagGrid');
+  const fl=q?S.tags.filter(t=>t.l.toLowerCase().includes(q.toLowerCase())||t.k.includes(q.toUpperCase())):S.tags;
+  g.innerHTML=fl.map(t=>`
+    <span class="tag" onclick="insertTag('${t.k}')" title="Einfügen">
+      <svg viewBox="0 0 9 9" fill="none"><path d="M1 4.5H8M5.5 2L8 4.5L5.5 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      {{${t.k}}}
+    </span>`).join('')||'<span class="sub">Kein Tag</span>';
+}
+function filterTags(v){renderTags(v)}
+function newTag(){
+  const raw=prompt('Tag-Name (z.B. REGION):');
+  if(!raw) return;
+  const k=raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+  if(!k){toast('Ungültiger Name','err');return}
+  if(S.tags.find(t=>t.k===k)){toast('Existiert schon','err');return}
+  S.tags.push({k,l:k});renderTags();toast(`{{${k}}} erstellt`,'ok');
+}
+function insertTag(key){
+  const tag=`{{${key}}}`;
+  Office.context.mailbox.item.body.setSelectedDataAsync(
+    tag,{coercionType:Office.CoercionType.Text},
+    r=>r.error?toast('Fehler: '+r.error.message,'err'):toast(`{{${key}}} eingefügt`,'ok')
+  );
+}
+
+/* ════════ FILE IMPORT ════════ */
+function dragOver(e){e.preventDefault();document.getElementById('dropZ').classList.add('over')}
+function dragLeave(){document.getElementById('dropZ').classList.remove('over')}
+function doDrop(e){e.preventDefault();dragLeave();const f=e.dataTransfer.files[0];if(f)procFile(f)}
+function loadFile(i){if(i.files[0])procFile(i.files[0]);i.value=''}
+
+function procFile(file){
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      let rows=[];
+      const name=file.name.toLowerCase();
+      if(name.endsWith('.csv')){
+        rows=ev.target.result.split('\n').filter(Boolean).map(l=>l.split(/[,;]/).map(c=>c.trim().replace(/^"|"$/g,'')));
+      }else{
+        const wb=XLSX.read(ev.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      }
+      if(!rows.length){toast('Datei leer','err');return}
+      S.cols=rows[0].map(String);
+      S.rc=rows.slice(1).filter(r=>r.some(c=>String(c).trim())).map(r=>{
+        const o={};S.cols.forEach((h,i)=>o[h]=String(r[i]||''));return o;
+      });
+      autoMap();renderTable();
+      document.getElementById('rcBadge').textContent=S.rc.length;
+      document.getElementById('rcBadge').classList.remove('hidden');
+      toast(`✓ ${S.rc.length} Empfänger geladen`,'ok');
+    }catch(e){toast('Fehler: '+e.message,'err')}
+  };
+  name.endsWith('.csv')?r.readAsText(file,'UTF-8'):r.readAsBinaryString(file);
+  const name=file.name.toLowerCase();
+}
+
+function autoMap(){
+  S.colMap={};
+  S.tags.forEach(t=>{
+    const match=S.cols.find(c=>{
+      const n=c.toUpperCase().replace(/[^A-Z0-9]/g,'');
+      return n===t.k||n.includes(t.k)||t.k.includes(n);
+    });
+    if(match) S.colMap[t.k]=match;
+  });
+  renderMap();
+}
+
+function renderMap(){
+  const card=document.getElementById('mapCard');
+  card.classList.remove('hidden');
+  document.getElementById('mapBody').innerHTML=S.tags.map(t=>`
+    <div class="map-row">
+      <span class="map-tag">{{${t.k}}}</span>
+      <span class="map-arrow">→</span>
+      <select class="inp" style="flex:1;padding:5px 8px;font-size:11.5px" onchange="S.colMap['${t.k}']=this.value">
+        <option value="">– kein –</option>
+        ${S.cols.map(c=>`<option value="${c}"${S.colMap[t.k]===c?' selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>`).join('');
+}
+
+function renderTable(){
+  const card=document.getElementById('tblCard');
+  card.classList.remove('hidden');
+  const missing=S.rc.filter(r=>Object.values(r).some(v=>!v.trim())).length;
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat"><div class="stat-n g">${S.rc.length}</div><div class="stat-l">Empfänger</div></div>
+    <div class="stat"><div class="stat-n">${S.cols.length}</div><div class="stat-l">Spalten</div></div>
+    <div class="stat"><div class="stat-n r">${missing}</div><div class="stat-l">Lückenhaft</div></div>`;
+  const cols=S.cols.slice(0,4);
+  document.getElementById('th').innerHTML=`<tr><th>#</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+  document.getElementById('tb').innerHTML=S.rc.slice(0,60).map((r,i)=>
+    `<tr><td style="color:var(--faint);font-size:10px">${i+1}</td>${cols.map(c=>`<td>${r[c]||'<span style="color:var(--red)">—</span>'}</td>`).join('')}</tr>`).join('');
+}
+
+function clearList(){
+  if(!confirm('Liste leeren?'))return;
+  S.rc=[];S.cols=[];S.colMap={};
+  document.getElementById('tblCard').classList.add('hidden');
+  document.getElementById('mapCard').classList.add('hidden');
+  document.getElementById('rcBadge').classList.add('hidden');
+}
+
+/* ════════ MANUAL ENTRY ════════ */
+const MAN_FIELDS=['EMAIL','VORNAME','NACHNAME','ANSPRACHE','INVESTMENTINTERESSE'];
+function showManual(){document.getElementById('manCard').classList.remove('hidden');if(!document.getElementById('manRows').children.length)addManRow()}
+function addManRow(){
+  const d=document.createElement('div');
+  d.style.cssText='display:grid;grid-template-columns:repeat(3,1fr) repeat(2,1fr);gap:4px;margin-bottom:5px';
+  d.innerHTML=MAN_FIELDS.map(f=>`<input class="inp" style="font-size:11px;padding:5px 7px" placeholder="${f}" data-f="${f}"/>`).join('');
+  document.getElementById('manRows').appendChild(d);
+}
+function commitMan(){
+  const rows=[...document.querySelectorAll('#manRows>div')].map(d=>{
+    const o={};d.querySelectorAll('input[data-f]').forEach(i=>{o[i.dataset.f]=i.value.trim()});return o;
+  }).filter(r=>Object.values(r).some(v=>v));
+  if(!rows.length){toast('Keine Daten','err');return}
+  S.cols=MAN_FIELDS;S.rc.push(...rows);
+  MAN_FIELDS.forEach(f=>{S.colMap[f]=f});
+  renderTable();
+  document.getElementById('manCard').classList.add('hidden');
+  document.getElementById('manRows').innerHTML='';
+  document.getElementById('rcBadge').textContent=S.rc.length;
+  document.getElementById('rcBadge').classList.remove('hidden');
+  toast(`✓ ${rows.length} hinzugefügt`,'ok');
+}
+
+/* ════════ MERGE ════════ */
+const EX={VORNAME:'Hans',NACHNAME:'Müller',ANSPRACHE:'Hans',EMAIL:'h.mueller@example.com',UNTERNEHMEN:'Müller GmbH',INVESTMENTINTERESSE:'Green Tech',BETRAG:'5.000',BRANCHE:'Technologie',DATUM:new Date().toLocaleDateString('de-DE'),ANGEBOTSNR:'2024-001'};
+
+function merge(tmpl,rec){
+  let r=tmpl||'';
+  S.tags.forEach(t=>{const v=rec[S.colMap[t.k]||t.k]||rec[t.k]||'';r=r.replaceAll('{{'+t.k+'}}',v)});
+  S.cols.forEach(c=>{r=r.replaceAll('{{'+c+'}}',rec[c]||'')});
+  return r;
+}
+function getEmail(r){
+  const col=S.colMap['EMAIL']||S.cols.find(c=>c.toLowerCase().includes('mail'))||'EMAIL';
+  return r[col]||r['EMAIL']||r['email']||'';
+}
+
+/* ════════ PREVIEW ════════ */
+function buildPreview(){
+  const box=document.getElementById('prevContent');
+  const use=S.rc.length?S.rc:null;
+  if(!use){box.innerHTML='<div class="empty"><span class="empty-ico">👀</span><p>Lade zuerst eine Empfängerliste.</p></div>';return}
+  S.prevIdx=Math.max(0,Math.min(S.prevIdx,use.length-1));
+  const r=use[S.prevIdx];
+  Office.context.mailbox.item.subject.getAsync({},(sr)=>{
+    Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text,{},(br)=>{
+      const subj=merge(sr.value||'',r);
+      const body=merge(br.value||'',r);
+      const email=getEmail(r);
+      box.innerHTML=`
+        <div class="prev-nav">
+          <button class="btn btn-s btn-sm" onclick="S.prevIdx=Math.max(0,S.prevIdx-1);buildPreview()">← Zurück</button>
+          <span class="prev-ctr">${S.prevIdx+1} / ${use.length}</span>
+          <button class="btn btn-s btn-sm" onclick="S.prevIdx=Math.min(S.rc.length-1,S.prevIdx+1);buildPreview()">Weiter →</button>
+        </div>
+        <div class="prev-meta">An: <strong>${email||'(keine E-Mail)'}</strong></div>
+        <div class="prev-subj">${subj||'(kein Betreff)'}</div>
+        <div class="prev-box">${escHtml(body||'(leer)')}</div>`;
+    });
+  });
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* ════════ PREFLIGHT ════════ */
+function refreshPref(){
+  const hasRC=S.rc.length>0;
+  const hasEmail=!!(S.colMap['EMAIL']||S.cols.find(c=>c.toLowerCase().includes('mail')));
+  const hasClientId=!!(S.clientId||document.getElementById('clientId')?.value);
+  const checks=[
+    {ok:hasRC,   l:`Empfänger geladen (${S.rc.length})`},
+    {ok:hasEmail,l:'E-Mail-Spalte erkannt'},
+    {ok:hasClientId,l:'Azure Client-ID eingetragen'},
+  ];
+  document.getElementById('pfList').innerHTML=checks.map(c=>
+    `<div class="row" style="padding:4px 0"><span style="font-size:15px">${c.ok?'✅':'⚠️'}</span><span style="font-size:12.5px;color:${c.ok?'var(--ink)':'var(--amber)'}">${c.l}</span></div>`).join('');
+  document.getElementById('sendBtn').disabled=!checks.every(c=>c.ok);
+  if(hasRC){
+    const d=parseInt(document.getElementById('dMin')?.value||4);
+    const sec=S.rc.length*d,min=Math.round(sec/60);
+    document.getElementById('sendEst').textContent=`ca. ${min<1?'< 1':min} Min. für ${S.rc.length} E-Mails`;
+  }
+}
+function saveClientId(){S.clientId=document.getElementById('clientId').value;localStorage.setItem('fn_clientId',S.clientId);refreshPref()}
+function selMode(n){S.mode=n;[0,1].forEach(i=>document.getElementById('m'+i).classList.toggle('selected',i===n))}
+
+/* ════════ SEND VIA GRAPH API ════════ */
+S.aborted=false;
+async function startSend(){
+  if(!S.rc.length){toast('Keine Empfänger','err');return}
+  if(!confirm(`Wirklich ${S.rc.length} E-Mails senden?`))return;
+
+  S.aborted=false;
+  document.getElementById('sendState').classList.add('on');
+  const log=document.getElementById('sendLog');log.innerHTML='';
+
+  let token;
+  try{
+    token=await Office.auth.getAccessToken({allowSignInPrompt:true,allowConsentPrompt:true,forMSGraphAccess:true});
+  }catch(e){toast('Login fehlgeschlagen: '+e.message,'err');return}
+
+  // Get current email subject + body
+  const subj=await new Promise(res=>Office.context.mailbox.item.subject.getAsync({},r=>res(r.value||'')));
+  const body=await new Promise(res=>Office.context.mailbox.item.body.getAsync(Office.CoercionType.HTML,{},r=>res(r.value||'')));
+
+  const total=S.rc.length;
+  let ok=0,err=0;
+  const dMin=parseInt(document.getElementById('dMin').value)||4;
+  const dMax=parseInt(document.getElementById('dMax').value)||9;
+  const useDelay=document.getElementById('delOn').checked;
+  const draft=S.mode===1;
+
+  for(let i=0;i<total;i++){
+    if(S.aborted){addLog(log,'⛔ Abgebrochen','lin');break}
+    const r=S.rc[i];
+    const toEmail=getEmail(r);
+    const ms=merge(subj,r);
+    const mb=merge(body,r);
+
+    try{
+      const endpoint=draft
+        ?'https://graph.microsoft.com/v1.0/me/messages'
+        :'https://graph.microsoft.com/v1.0/me/sendMail';
+      const payload=draft?{
+        subject:ms,body:{contentType:'HTML',content:mb},
+        toRecipients:[{emailAddress:{address:toEmail}}]
+      }:{
+        message:{subject:ms,body:{contentType:'HTML',content:mb},
+          toRecipients:[{emailAddress:{address:toEmail}}]},
+        saveToSentItems:true
+      };
+      const res=await fetch(endpoint,{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.status)}
+      ok++;addLog(log,`✓ #${i+1} ${toEmail}`,'lok');
+    }catch(e){
+      err++;addLog(log,`✗ #${i+1} ${toEmail}: ${e.message}`,'ler');
+    }
+
+    const pct=Math.round(((i+1)/total)*100);
+    document.getElementById('progFill').style.width=pct+'%';
+    document.getElementById('sendCtr').textContent=`${i+1} / ${total}`;
+
+    if(useDelay&&i<total-1){
+      await sleep(dMin*1000+Math.random()*(dMax-dMin)*1000);
+    }
+  }
+  addLog(log,`━━━ ${ok} ${draft?'Entwürfe':'gesendet'}, ${err} Fehler ━━━`,'lin');
+  toast(`✓ ${ok} E-Mails ${draft?'als Entwurf':'gesendet'}${err?` · ${err} Fehler`:''}`,err?'err':'ok');
+}
+
+function abortSend(){S.aborted=true;toast('Versand wird abgebrochen…','err')}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function addLog(el,msg,cls){el.innerHTML+=`<div class="${cls}">${msg}</div>`;el.scrollTop=el.scrollHeight}
+
+/* ════════ CAMPAIGNS ════════ */
+function saveCamp(){
+  const name=prompt('Kampagnen-Name:');if(!name)return;
+  const c={id:Date.now(),name,rc:S.rc.length,colMap:{...S.colMap},date:new Date().toLocaleDateString('de-DE'),status:'draft'};
+  S.camps.unshift(c);localStorage.setItem('fn_camps',JSON.stringify(S.camps));
+  renderCamps();toast(`"${name}" gespeichert`,'ok');
+}
+function exportCamp(){
+  const blob=new Blob([JSON.stringify(S.camps,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fn_campaigns.json';a.click();
+}
+function renderCamps(){
+  const el=document.getElementById('campList');
+  if(!S.camps.length){el.innerHTML='<div class="empty"><span class="empty-ico">📭</span><p>Noch keine Kampagnen gespeichert.</p></div>';return}
+  el.innerHTML=S.camps.map(c=>`
+    <div class="camp-item" onclick="loadCamp(${c.id})">
+      <div class="camp-ico">📧</div>
+      <div class="camp-info">
+        <div class="camp-name">${c.name}</div>
+        <div class="camp-sub">${c.rc} Empfänger · ${c.date}</div>
+      </div>
+      <span class="bdg bdg-${c.status==='sent'?'s':'d'}">${c.status==='sent'?'Gesendet':'Entwurf'}</span>
+      <button class="btn btn-g btn-sm" onclick="event.stopPropagation();delCamp(${c.id})">🗑</button>
+    </div>`).join('');
+}
+function loadCamp(id){
+  const c=S.camps.find(x=>x.id===id);if(!c)return;
+  if(c.colMap) S.colMap=c.colMap;
+  toast(`"${c.name}" geladen`,'ok');sw(1);
+}
+function delCamp(id){
+  if(!confirm('Löschen?'))return;
+  S.camps=S.camps.filter(c=>c.id!==id);
+  localStorage.setItem('fn_camps',JSON.stringify(S.camps));renderCamps();
+}
+
+/* ════════ TOAST ════════ */
+function toast(msg,type='ok'){
+  const w=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span>${msg}`;
+  w.appendChild(t);
+  setTimeout(()=>{t.style.cssText='opacity:0;transform:translateY(6px);transition:all .28s';setTimeout(()=>t.remove(),300)},3200);
+}
+</script>
+</body>
+</html>
